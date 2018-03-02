@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>MeidaRecorder</title>
+<script src="https://lib.sinaapp.com/js/jquery/1.7.2/jquery.min.js"></script>
+<style>
+*{
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family:monospace;
+}
+html,body{
+  height: 100%;
+}
+html{
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -ms-touch-action: pan-y;
+  background: #fff;
+}
+body{
+  margin: 0;
+  font-family: Arial;
+  word-break: break-word;
+  color: #000;
+  position: relative;
+}
+h1,h2,h3,h4,h5,p{
+  margin: 0;
+}
+pre{
+  padding: 24px 28px;
+}
+a{
+  cursor: pointer;
+  text-decoration: none;
+  color: $main-blue;
+  outline: none !important;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+input, textarea{
+  outline: none !important;
+  -webkit-appearance: none;
+  border: 1px solid #ddd;
+  background: #fcfcfc;
+  color: #777;
+  &:focus{
+    border-color: #cfcfcf;
+    background: #fff;
+    color: #444;
+  }
+  &[readonly]{
+    border-color: #e0e0e0;
+    background: red;
+    color: #bbb;
+  }
+}
+input{
+  word-break: break-all;
+}
+label{
+  vertical-align: middle;
+}
+ul{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+hr{
+  margin: 0 auto;
+  border: none;
+}
+img{
+  border: none;
+}
+
+@media (max-width: 700px){
+  body:after{
+    content:"您的螢幕太小了";
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 20%;
+    font-size: 40px;
+  }
+  #app-main{
+    display: none;
+  }
+} 
+</style>
+</head>
+<body>
+<label for="audioDevice"> 錄音設備: </label>
+<select id="audioDevice">
+</select>
+<br>
+<label for="videoDevice"> 錄影設備: </label>
+<select id="videoDevice">
+</select>
+<br>
+<label for="videoDevice"> 視頻寬: </label>
+<input id="videoWidth" value="320" />
+<label for="videoDevice"> 視頻高: </label>
+<input id="videoHeight" value="240" />
+<br>
+<label for="videoFrame"> 更新率: </label>
+<input id="videoFrame" value="30" />
+<button onclick="startPreview()" id="startPreview">開始預覽</button>
+<button onclick="startRecording()" id="startRecording" disabled="disabled">開始錄影</button>
+<button onclick="stopRecording()" id="stopRecording" disabled="disabled">停止錄影</button>
+<br>
+<video id="video" autoplay></video>
+<script type="text/javascript">
+
+navigator.mediaDevices.enumerateDevices().then(function (data) {
+  data.forEach(function (item) {
+    if(item.kind=="audioinput"){
+     document.getElementById("audioDevice").innerHTML +=  "<option value='"+ item.deviceId +"'>" + item.label + " </option> "
+    }else if(item.kind=="videoinput"){
+      $("#videoDevice").append("<option value='"+ item.deviceId +"'>" + item.label + " </option> ")
+    }
+  })
+  console.log(data);
+  // body...
+},function (error) {
+    alert("錄影失敗" + error);
+  console.log(error);
+})
+
+var getUserMedia = navigator.webkitGetUserMedia ;
+var g_stream = null,g_recorder = null,chunks = [];
+function startPreview(){
+  getUserMedia.call(navigator, {
+    "audio":{"mandatory":{"sourceId":$("#audioDevice").val()}},
+    "video":{
+            "optional":[ 
+              {"minWidth":parseInt($("#videoWidth").val())},{"maxWidth":parseInt($("#videoWidth").val())},
+              {"minHeight":parseInt($("#videoHeight").val()) },{"maxHeight":parseInt($("#videoHeight").val())},
+              {"frameRate":parseInt($("#videoFrame").val()) }
+          ],"mandatory":{
+            "sourceId":$("#videoDevice").val()
+          }
+        }
+  }, function(stream){
+      g_stream = stream;
+      document.getElementById("video").src = URL.createObjectURL(stream);
+      $("#startPreview").attr("disabled","disabled");
+      $("#startRecording").removeAttr("disabled")
+
+  }, function(error){
+  });
+}
+
+var saveFile = function(url, filename){
+    var save_link = document.createElementNS('http://www.w3.org/1999/xhtml', 'a')
+    save_link.href = url;
+    save_link.download = filename;
+   
+    var event = document.createEvent('MouseEvents');
+    event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+    save_link.dispatchEvent(event);
+  };
+
+function stopRecording(){
+  var blob = new Blob(chunks, { 'type' : 'video/webm' });
+  var audioURL = URL.createObjectURL(blob);
+  window.open(audioURL);
+  g_recorder.stop();
+}
+
+function startRecording(){
+  g_recorder = new MediaRecorder(g_stream,{ mimeType:'video/webm' });
+  g_recorder.ondataavailable = function(e) {
+    chunks.push(e.data);
+  }
+  g_recorder.onstop = function(e) {
+    var blob = new Blob(chunks, { 'type' : 'video/webm' });
+    var audioURL = URL.createObjectURL(blob);
+    saveFile(audioURL,"我的自拍.webm");
+    chunks = [];
+    $("#stopRecording").attr("disabled","disabled");
+    $("#startRecording").removeAttr("disabled");
+  }
+  g_recorder.start();
+      $("#startRecording").attr("disabled","disabled");
+      $("#stopRecording").removeAttr("disabled")
+}
+
+</script>
+</body>
+</html>
