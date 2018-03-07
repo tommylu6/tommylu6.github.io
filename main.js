@@ -34,9 +34,10 @@ playButton.onclick = play;
 downloadButton.onclick = download;
 
 // Call main() in demo.js to init teapot
-main();
+//main();
 
 // window.isSecureContext could be used for Chrome
+var hname = location.hostname;
 var isSecureOrigin = location.protocol === 'https:' ||
 location.hostname === 'localhost';
 if (!isSecureOrigin) {
